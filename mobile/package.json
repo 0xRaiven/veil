@@ -20,6 +20,7 @@
     "react": "19.2.3",
     "react-native": "0.87.1",
     "react-native-encrypted-storage": "^4.0.3",
+    "react-native-image-picker": "^8.2.1",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-safe-area-context": "^5.9.1",
     "react-native-screens": "^4.27.0",

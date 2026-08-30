@@ -6,18 +6,17 @@ import { MfaSetupScreen } from '../features/auth/screens/MfaSetupScreen';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-// Placeholder Home Screen for now
+// We will replace the placeholder HomeScreen entirely since the prompt asks for
+// a Settings Hub as the foundation. We can use SettingsHub as the main view for now,
+// or keep a blank Home and add a Settings button. Let's make Home just have a Settings button.
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>VEIL Home</Text>
-      <Text style={styles.subtitle}>You are securely authenticated.</Text>
+      <Text style={styles.title}>VEIL</Text>
+      <Text style={styles.subtitle}>Stage 3 Foundation</Text>
       <View style={styles.buttonContainer}>
-        <Button title="Manage MFA" onPress={() => navigation.navigate('MfaSetup')} color="#4A90E2" />
-      </View>
-      <View style={styles.buttonContainer}>
-        <Button title="Logout" onPress={() => supabase.auth.signOut()} color="#E24A4A" />
+        <Button title="Open Settings" onPress={() => navigation.navigate('SettingsHub')} color="#4A90E2" />
       </View>
     </View>
   );
@@ -30,12 +29,17 @@ const styles = StyleSheet.create({
   buttonContainer: { marginTop: 15 }
 });
 
+import { SettingsHubScreen } from '../features/settings/screens/SettingsHubScreen';
+import { ProfileScreen } from '../features/settings/screens/ProfileScreen';
+
 const Stack = createNativeStackNavigator();
 
 export const AppNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: '#111' }, headerTintColor: '#fff' }}>
-      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'VEIL' }} />
+      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'VEIL', headerShown: false }} />
+      <Stack.Screen name="SettingsHub" component={SettingsHubScreen} options={{ title: 'Settings', headerShown: false }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Edit Profile' }} />
       <Stack.Screen name="MfaSetup" component={MfaSetupScreen} options={{ title: 'MFA Settings' }} />
     </Stack.Navigator>
   );
