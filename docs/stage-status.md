@@ -9,3 +9,4 @@ This document tracks the completion status of all stages in the VEIL project.
 ## Completed Stages
 - Stage 0 - Project Bootstrap (Completed)
 - Stage 1 - Supabase Foundation (Completed)
+- Stage 2 - Authentication (Completed)
