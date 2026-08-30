@@ -1,18 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Share, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Share, Linking, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { discoverContacts, DiscoveredContact, UnmatchedContact } from '../services/discovery';
+import { useNavigation } from '@react-navigation/native';
+import { discoverContacts, searchGlobalUsers, getSuggestedUsers, DiscoveredContact, UnmatchedContact } from '../services/discovery';
 import { Avatar } from '../../../components/Avatar';
+import { useAuth } from '../../auth/AuthContext';
+import { Search } from 'lucide-react-native';
+import { supabase } from '../../../services/supabase/client';
 
 export const ContactDiscoveryScreen = () => {
+  const navigation = useNavigation<any>();
+  const { session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [matched, setMatched] = useState<DiscoveredContact[]>([]);
   const [unmatched, setUnmatched] = useState<UnmatchedContact[]>([]);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [globalUsers, setGlobalUsers] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'contacts' | 'global'>('contacts');
 
   useEffect(() => {
     loadContacts();
   }, []);
+
+  useEffect(() => {
+    if (session?.user.id) {
+      if (searchQuery.trim().length > 0) {
+        searchGlobalUsers(searchQuery, session.user.id).then(setGlobalUsers);
+      } else {
+        getSuggestedUsers(session.user.id).then(setGlobalUsers);
+      }
+    }
+  }, [searchQuery, session?.user.id]);
 
   const loadContacts = async () => {
     setLoading(true);
@@ -41,6 +61,18 @@ export const ContactDiscoveryScreen = () => {
     }
   };
 
+  const startChat = async (otherUserId: string, title: string) => {
+    // Attempt to create or get conversation
+    const { data, error } = await (supabase as any).rpc('create_direct_conversation', {
+      other_user_id: otherUserId
+    });
+    if (!error && data) {
+      navigation.navigate('ChatRoom', { conversationId: data, title });
+    } else {
+      console.error("Failed to start chat", error);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -62,7 +94,7 @@ export const ContactDiscoveryScreen = () => {
   }
 
   const renderMatched = ({ item }: { item: DiscoveredContact }) => (
-    <TouchableOpacity style={styles.listItem} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.listItem} activeOpacity={0.7} onPress={() => startChat(item.id, item.local_name)}>
       <Avatar path={item.avatar_path} size={52} fallbackText={item.display_name} />
       <View style={styles.listTextContainer}>
         <Text style={styles.listTitle}>{item.local_name}</Text>
@@ -70,7 +102,20 @@ export const ContactDiscoveryScreen = () => {
           <Text style={styles.veilBadgeText}>● VEIL</Text> {item.display_name}
         </Text>
       </View>
-      <TouchableOpacity style={styles.actionBtn}>
+      <TouchableOpacity style={styles.actionBtn} onPress={() => startChat(item.id, item.local_name)}>
+        <Text style={styles.actionBtnText}>Chat</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
+  const renderGlobalUser = ({ item }: { item: any }) => (
+    <TouchableOpacity style={styles.listItem} activeOpacity={0.7} onPress={() => startChat(item.id, item.display_name)}>
+      <Avatar path={item.avatar_path} size={52} fallbackText={item.display_name} />
+      <View style={styles.listTextContainer}>
+        <Text style={styles.listTitle}>{item.display_name}</Text>
+        <Text style={styles.listSubtitle}>VEIL User</Text>
+      </View>
+      <TouchableOpacity style={styles.actionBtn} onPress={() => startChat(item.id, item.display_name)}>
         <Text style={styles.actionBtnText}>Chat</Text>
       </TouchableOpacity>
     </TouchableOpacity>
@@ -96,21 +141,58 @@ export const ContactDiscoveryScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <FlatList
-        data={[
-          { type: 'header', title: 'ON VEIL' },
-          ...matched.map(m => ({ ...m, type: 'matched' })),
-          { type: 'header', title: 'INVITE TO VEIL' },
-          ...unmatched.map(u => ({ ...u, type: 'unmatched' }))
-        ]}
-        keyExtractor={(item, index) => item.type + index.toString()}
-        renderItem={({ item }) => {
-          if (item.type === 'header') return <Text style={styles.sectionHeader}>{(item as any).title}</Text>;
-          if (item.type === 'matched') return renderMatched({ item } as any);
-          if (item.type === 'unmatched') return renderUnmatched({ item } as any);
-          return null;
-        }}
-      />
+      <View style={styles.tabContainer}>
+        <TouchableOpacity style={[styles.tab, activeTab === 'contacts' && styles.activeTab]} onPress={() => setActiveTab('contacts')}>
+          <Text style={[styles.tabText, activeTab === 'contacts' && styles.activeTabText]}>My Contacts</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tab, activeTab === 'global' && styles.activeTab]} onPress={() => setActiveTab('global')}>
+          <Text style={[styles.tabText, activeTab === 'global' && styles.activeTabText]}>Discover Users</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'global' && (
+        <View style={styles.searchContainer}>
+          <Search size={20} color="#71717a" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search VEIL users..."
+            placeholderTextColor="#71717a"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      )}
+
+      {activeTab === 'contacts' ? (
+        <FlatList
+          data={[
+            { type: 'header', title: 'ON VEIL' },
+            ...matched.map(m => ({ ...m, type: 'matched' })),
+            { type: 'header', title: 'INVITE TO VEIL' },
+            ...unmatched.map(u => ({ ...u, type: 'unmatched' }))
+          ]}
+          keyExtractor={(item, index) => item.type + index.toString()}
+          renderItem={({ item }) => {
+            if (item.type === 'header') return <Text style={styles.sectionHeader}>{(item as any).title}</Text>;
+            if (item.type === 'matched') return renderMatched({ item } as any);
+            if (item.type === 'unmatched') return renderUnmatched({ item } as any);
+            return null;
+          }}
+        />
+      ) : (
+        <FlatList
+          data={[
+            { type: 'header', title: searchQuery.trim() ? 'SEARCH RESULTS' : 'SUGGESTED USERS' },
+            ...globalUsers.map(u => ({ ...u, type: 'global' }))
+          ]}
+          keyExtractor={(item, index) => item.type + index.toString()}
+          renderItem={({ item }) => {
+            if (item.type === 'header') return <Text style={styles.sectionHeader}>{(item as any).title}</Text>;
+            if (item.type === 'global') return renderGlobalUser({ item } as any);
+            return null;
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -133,5 +215,12 @@ const styles = StyleSheet.create({
   inviteBtn: { backgroundColor: '#18181b', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, borderWidth: 1, borderColor: '#27272a' },
   inviteBtnText: { color: '#d4d4d8', fontSize: 14, fontWeight: '600' },
   fallbackAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#18181b', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#27272a' },
-  fallbackAvatarText: { color: '#71717a', fontSize: 20, fontWeight: '700' }
+  fallbackAvatarText: { color: '#71717a', fontSize: 20, fontWeight: '700' },
+  tabContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#18181b' },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 20 },
+  activeTab: { backgroundColor: '#18181b' },
+  tabText: { color: '#71717a', fontSize: 14, fontWeight: '600' },
+  activeTabText: { color: '#fafafa' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#18181b', marginHorizontal: 20, marginTop: 16, marginBottom: 8, paddingHorizontal: 16, height: 44, borderRadius: 22, borderWidth: 1, borderColor: '#27272a' },
+  searchInput: { flex: 1, color: '#fafafa', fontSize: 15, marginLeft: 10 }
 });

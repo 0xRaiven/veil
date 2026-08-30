@@ -16,6 +16,9 @@ const HomeScreen = () => {
       <Text style={styles.title}>VEIL</Text>
       <Text style={styles.subtitle}>Stage 4 Contacts</Text>
       <View style={styles.buttonContainer}>
+        <Button title="Messages" onPress={() => navigation.navigate('ChatList')} color="#10b981" />
+      </View>
+      <View style={styles.buttonContainer}>
         <Button title="Find Friends" onPress={() => navigation.navigate('ContactDiscovery')} color="#E2A14A" />
       </View>
       <View style={styles.buttonContainer}>
@@ -36,6 +39,8 @@ import { SettingsHubScreen } from '../features/settings/screens/SettingsHubScree
 import { ProfileScreen } from '../features/settings/screens/ProfileScreen';
 import { LinkPhoneScreen } from '../features/settings/screens/LinkPhoneScreen';
 import { ContactDiscoveryScreen } from '../features/contacts/screens/ContactDiscoveryScreen';
+import { ChatListScreen } from '../features/chat/screens/ChatListScreen';
+import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,6 +53,8 @@ export const AppNavigator = () => {
       <Stack.Screen name="MfaSetup" component={MfaSetupScreen} options={{ title: 'MFA Settings' }} />
       <Stack.Screen name="LinkPhone" component={LinkPhoneScreen} options={{ title: 'Link Phone' }} />
       <Stack.Screen name="ContactDiscovery" component={ContactDiscoveryScreen} options={{ title: 'Find Friends' }} />
+      <Stack.Screen name="ChatList" component={ChatListScreen} options={{ title: 'Messages', headerShown: false }} />
+      <Stack.Screen name="ChatRoom" component={ChatRoomScreen} options={{ headerStyle: { backgroundColor: '#09090b' } }} />
     </Stack.Navigator>
   );
 };

@@ -116,3 +116,34 @@ export const discoverContacts = async (defaultRegion: string = 'US') => {
     unmatched: uniqueUnmatched
   };
 };
+
+export const searchGlobalUsers = async (query: string, currentUserId: string) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name, avatar_path')
+    .ilike('display_name', `%${query}%`)
+    .neq('id', currentUserId)
+    .limit(20);
+
+  if (error) {
+    console.error('Global search error:', error);
+    return [];
+  }
+  return data || [];
+};
+
+export const getSuggestedUsers = async (currentUserId: string) => {
+  // Fetch some recent or random users as a placeholder for suggestions
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name, avatar_path')
+    .neq('id', currentUserId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.error('Fetch suggested users error:', error);
+    return [];
+  }
+  return data || [];
+};
