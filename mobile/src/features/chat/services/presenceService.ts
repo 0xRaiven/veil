@@ -13,6 +13,12 @@ class PresenceService {
     this.currentUserId = userId;
     const db = supabase as any;
     
+    // Clean up any existing channel with the same topic (useful during hot reloads)
+    const existingChannel = db.getChannels().find((c: any) => c.topic === 'realtime:presence:global');
+    if (existingChannel) {
+      db.removeChannel(existingChannel);
+    }
+    
     this.channel = db.channel('presence:global', {
       config: {
         presence: {

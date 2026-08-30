@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../../../services/supabase/client';
@@ -9,6 +9,25 @@ import { useAuth } from '../../auth/AuthContext';
 export const SettingsHubScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { session } = useAuth();
+  const [pushEnabled, setPushEnabled] = useState(true);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      supabase.from('profiles').select('push_enabled').eq('id', session.user.id).single()
+        .then(({ data }) => {
+          if (data && data.push_enabled !== null) {
+            setPushEnabled(data.push_enabled);
+          }
+        });
+    }
+  }, [session]);
+
+  const togglePush = async (val: boolean) => {
+    setPushEnabled(val);
+    if (session?.user?.id) {
+      await supabase.from('profiles').update({ push_enabled: val }).eq('id', session.user.id);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -34,7 +53,10 @@ export const SettingsHubScreen = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PREFERENCES</Text>
-          <MenuItem title="Notifications" onPress={() => {}} />
+          <View style={styles.menuItem}>
+            <Text style={styles.menuItemText}>Push Notifications</Text>
+            <Switch value={pushEnabled} onValueChange={togglePush} />
+          </View>
           <MenuItem title="Privacy" onPress={() => {}} />
           <MenuItem title="Appearance" onPress={() => {}} />
         </View>

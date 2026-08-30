@@ -9,6 +9,7 @@ import { typingService } from '../services/typingService';
 import { useAuth } from '../../auth/AuthContext';
 import { Send, Clock, Check, CheckCheck, AlertCircle } from 'lucide-react-native';
 import { formatDistanceToNow } from 'date-fns';
+import { Avatar } from '../../../components/Avatar';
 
 const EMPTY_ARRAY: Message[] = [];
 
@@ -56,15 +57,24 @@ export const ChatRoomScreen = () => {
       statusColor = '#71717a';
     }
     
+    const remoteAvatarPath = otherMember?.avatar_path || null;
+    const localAvatarPath = otherMember?.local_avatar_path || null;
+    const finalAvatarPath = localAvatarPath || remoteAvatarPath;
+
     navigation.setOptions({ 
       headerTitle: () => (
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{ color: '#fafafa', fontSize: 16, fontWeight: '600' }}>{title}</Text>
-          {statusText ? <Text style={{ color: statusColor, fontSize: 12 }}>{statusText}</Text> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ marginRight: 10 }}>
+            <Avatar path={finalAvatarPath} size={36} fallbackText={title} />
+          </View>
+          <View>
+            <Text style={{ color: '#fafafa', fontSize: 16, fontWeight: '600' }}>{title}</Text>
+            {statusText ? <Text style={{ color: statusColor, fontSize: 12 }}>{statusText}</Text> : null}
+          </View>
         </View>
       )
     });
-  }, [title, isOnline, isTyping, lastSeen, otherMember?.last_seen, navigation, ticker]);
+  }, [title, isOnline, isTyping, lastSeen, otherMember?.last_seen, otherMember?.avatar_path, otherMember?.local_avatar_path, navigation, ticker]);
 
   useEffect(() => {
     if (conversationId && session?.user.id) {

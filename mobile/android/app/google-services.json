@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "324305988932",
+    "project_id": "veil-99787",
+    "storage_bucket": "veil-99787.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:324305988932:android:1688afd1fde9bc2ef8fb11",
+        "android_client_info": {
+          "package_name": "com.cryoflake.veil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2KueWyrukhF82TGERg0Q4tgJPWsTdXqc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

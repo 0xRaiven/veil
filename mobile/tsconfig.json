@@ -4,6 +4,8 @@
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "types": ["node", "jest"]
   },
   "include": ["**/*.ts", "**/*.tsx"],

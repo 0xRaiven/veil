@@ -15,6 +15,7 @@ export interface Database {
           display_name: string | null
           avatar_path: string | null
           bio: string | null
+          push_enabled: boolean | null
           created_at: string
           updated_at: string
         }
@@ -23,6 +24,7 @@ export interface Database {
           display_name?: string | null
           avatar_path?: string | null
           bio?: string | null
+          push_enabled?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -31,6 +33,7 @@ export interface Database {
           display_name?: string | null
           avatar_path?: string | null
           bio?: string | null
+          push_enabled?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +43,41 @@ export interface Database {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      push_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          token: string
+          platform: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token: string
+          platform: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          token?: string
+          platform?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           }
         ]

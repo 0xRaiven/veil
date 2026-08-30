@@ -29,7 +29,9 @@ export const ChatListScreen = () => {
 
   const renderItem = ({ item }: { item: any }) => {
     const title = item.type === 'direct' ? (item.other_member?.display_name || 'Unknown') : 'Group Chat';
-    const avatarPath = item.type === 'direct' ? item.other_member?.avatar_path : null;
+    const remoteAvatarPath = item.type === 'direct' ? item.other_member?.avatar_path : null;
+    const localAvatarPath = item.type === 'direct' ? item.other_member?.local_avatar_path : null;
+    const finalAvatarPath = localAvatarPath || remoteAvatarPath;
     const timeText = item.updated_at ? formatDistanceToNow(new Date(item.updated_at), { addSuffix: true }) : '';
 
     const isOnline = item.other_member?.id ? onlineUsers[item.other_member.id] : false;
@@ -41,7 +43,7 @@ export const ChatListScreen = () => {
         onPress={() => navigation.navigate('ChatRoom', { conversationId: item.id, title })}
       >
         <View style={styles.avatarWrapper}>
-          <Avatar path={avatarPath} size={56} fallbackText={title} />
+          <Avatar path={finalAvatarPath} size={56} fallbackText={title} />
           {isOnline && <View style={styles.onlineDot} />}
         </View>
         <View style={styles.textContainer}>

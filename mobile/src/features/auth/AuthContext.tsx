@@ -2,6 +2,12 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../services/supabase/client';
 import { presenceService } from '../chat/services/presenceService';
+import { initDatabase } from '../../services/databaseService';
+import { syncService } from '../chat/services/syncService';
+import { outboxService } from '../chat/services/outboxService';
+import { chatService } from '../chat/services/chatService';
+import { notificationService } from '../../services/notificationService';
+import NetInfo from '@react-native-community/netinfo';
 
 interface AuthContextType {
   session: Session | null;
@@ -59,6 +65,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    initDatabase();
+
+    let unsubscribeMessages: (() => void) | null = null;
 
     const restoreSession = async () => {
       setIsLoading(true);
@@ -68,6 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(initialSession?.user ?? null);
         if (initialSession?.user) {
           presenceService.init(initialSession.user.id);
+          // syncService.init(initialSession.user.id);
+          // syncService.performSync();
+          chatService.fetchConversations(initialSession.user.id);
+          unsubscribeMessages = chatService.subscribeToMessages(initialSession.user.id);
+          notificationService.syncToken(initialSession.user.id);
         }
         await fetchMfaDetails(initialSession);
         setIsLoading(false);
@@ -81,9 +95,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         
         if (event === 'SIGNED_OUT') {
+          if (session?.user?.id) {
+             notificationService.removeToken(session.user.id);
+          }
           presenceService.cleanup();
+          if (unsubscribeMessages) unsubscribeMessages();
         } else if (newSession?.user) {
           presenceService.init(newSession.user.id);
+          // syncService.init(newSession.user.id);
+          // syncService.performSync();
+          chatService.fetchConversations(newSession.user.id);
+          if (unsubscribeMessages) unsubscribeMessages();
+          unsubscribeMessages = chatService.subscribeToMessages(newSession.user.id);
+          notificationService.syncToken(newSession.user.id);
         }
         
         setSession(newSession);
@@ -93,9 +117,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
+    const unsubscribeNet = NetInfo.addEventListener(state => {
+      if (state.isConnected && session?.user) {
+        console.log('[AuthContext] Network restored, fetching conversations');
+        // syncService.performSync();
+        // outboxService.process();
+        chatService.fetchConversations(session.user.id);
+      }
+    });
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      unsubscribeNet();
+      presenceService.cleanup();
+      if (unsubscribeMessages) unsubscribeMessages();
     };
   }, []);
 

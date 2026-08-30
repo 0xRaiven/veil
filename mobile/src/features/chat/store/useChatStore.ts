@@ -8,7 +8,8 @@ export interface Message {
   content_type: 'plaintext' | 'encrypted' | 'system';
   content: string;
   created_at: string;
-  status?: 'sending' | 'sent' | 'error';
+  local_media_path?: string | null;
+  status: 'sending' | 'sent' | 'read' | 'error';
 }
 
 export interface Conversation {
@@ -18,10 +19,11 @@ export interface Conversation {
   updated_at: string;
   other_member?: {
     id: string;
-    display_name: string;
+    display_name: string | null;
     avatar_path: string | null;
+    local_avatar_path?: string | null;
     last_read_at?: string;
-    last_seen?: string;
+    last_seen?: string | null;
   };
   last_message?: string;
   unread_count?: number;
@@ -132,7 +134,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isRealtimeActive: true });
 
     const db = supabase as any;
-    const channel = db.channel('chat_realtime');
+    const channel = db.channel(`chat_realtime:${Date.now()}`);
     
     // Listen for new messages
     channel.on(
@@ -140,14 +142,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
       { event: 'INSERT', schema: 'public', table: 'messages' },
       (payload: any) => {
         const msg = payload.new as Message;
-        // Skip optimistic duplicates (if sender is us, we already added it)
+        
+        // Persist to local DB
+        const { localDb } = require('../../../services/databaseService');
+        localDb.execute(
+          `INSERT OR IGNORE INTO local_messages (id, conversation_id, sender_id, content_type, content, created_at, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [msg.id, msg.conversation_id, msg.sender_id, msg.content_type, msg.content, msg.created_at, 'sent']
+        );
+        
+        const preview = msg.content_type === 'plaintext' ? msg.content : '🔒 Encrypted Message';
+        localDb.execute(
+          'UPDATE local_conversations SET last_message = ?, updated_at = ? WHERE id = ?',
+          [preview, msg.created_at, msg.conversation_id]
+        );
+
+        // Update UI state
+        // Skip optimistic duplicates if we already added it locally as sending
         if (msg.sender_id !== userId) {
           get().addMessage({ ...msg, status: 'sent' });
+        } else {
+          // If it was us, just confirm it's sent
+          get().updateMessageStatus(msg.id, 'sent');
         }
       }
     ).subscribe();
 
-    const membersChannel = db.channel('members_realtime');
+    const membersChannel = db.channel(`members_realtime:${Date.now()}`);
     membersChannel.on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'conversation_members' },

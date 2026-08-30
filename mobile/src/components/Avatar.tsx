@@ -16,6 +16,13 @@ export const Avatar: React.FC<AvatarProps> = ({ path, size = 100, fallbackText =
     let mounted = true;
     const fetchUrl = async () => {
       if (!path) return;
+      
+      // If the path is already a remote HTTP URL or a local file URL, use it directly
+      if (path.startsWith('http') || path.startsWith('file://')) {
+        setUrl(path);
+        return;
+      }
+      
       setLoading(true);
       const signedUrl = await getAvatarSignedUrl(path, 60 * 60); // 1 hour
       if (mounted) {

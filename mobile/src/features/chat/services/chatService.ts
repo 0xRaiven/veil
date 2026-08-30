@@ -12,7 +12,7 @@ const generateUUID = () => {
 };
 
 export const chatService = {
-  async fetchConversations(userId: string) {
+  async fetchConversations(userId: string, retries = 3): Promise<void> {
     // In a production app, this would be a Postgres View or RPC to efficiently join members & last message.
     // For now, we query conversation_members and join profiles.
 
@@ -28,6 +28,11 @@ export const chatService = {
       .order('last_read_at', { ascending: false });
 
     if (error) {
+      if (error.code === 'PGRST303' && retries > 0) {
+        console.warn('JWT issued in the future (clock skew). Retrying in 1s...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.fetchConversations(userId, retries - 1);
+      }
       console.error('fetchConversations error:', error);
       return;
     }
@@ -151,5 +156,34 @@ export const chatService = {
       .update({ last_read_at: now })
       .eq('conversation_id', conversationId)
       .eq('user_id', userId);
+  },
+
+  subscribeToMessages(userId: string) {
+    const channel = db.channel(`public:messages:${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload: any) => {
+          const newMsg = payload.new;
+          // Optimistically update the store if the message belongs to an active conversation
+          const state = useChatStore.getState();
+          if (state.conversations[newMsg.conversation_id]) {
+            // Check if it's already added (from optimistic UI)
+            const exists = state.messages[newMsg.conversation_id]?.find(m => m.id === newMsg.id);
+            if (!exists) {
+              state.addMessage({ ...newMsg, status: 'sent' });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 };
