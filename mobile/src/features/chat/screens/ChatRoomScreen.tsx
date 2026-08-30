@@ -3,9 +3,12 @@ import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Keyboard
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useChatStore, Message } from '../store/useChatStore';
+import { usePresenceStore } from '../store/usePresenceStore';
 import { chatService } from '../services/chatService';
+import { typingService } from '../services/typingService';
 import { useAuth } from '../../auth/AuthContext';
 import { Send, Clock, Check, CheckCheck, AlertCircle } from 'lucide-react-native';
+import { formatDistanceToNow } from 'date-fns';
 
 const EMPTY_ARRAY: Message[] = [];
 
@@ -22,15 +25,56 @@ export const ChatRoomScreen = () => {
   const otherMember = conversation?.other_member;
   
   const messages = useChatStore(state => state.messages[conversationId] || EMPTY_ARRAY);
+  const isOnline = usePresenceStore(state => otherMember ? state.onlineUsers[otherMember.id] : false);
+  const lastSeen = usePresenceStore(state => otherMember ? state.lastSeen[otherMember.id] : null);
+  const typingUserId = usePresenceStore(state => state.typingUsers[conversationId]);
+  const isTyping = typingUserId && otherMember && typingUserId === otherMember.id;
+  
   const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState('');
+  const lastTypingTime = React.useRef(0);
+  const [ticker, setTicker] = useState(0);
 
   useEffect(() => {
-    navigation.setOptions({ title });
-    if (conversationId) {
-      chatService.fetchMessages(conversationId).then(() => setLoading(false));
+    const interval = setInterval(() => setTicker(t => t + 1), 30000); // Update every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let statusText = '';
+    let statusColor = '#10b981'; // Green by default
+    
+    if (isTyping) {
+      statusText = 'Typing...';
+    } else if (isOnline) {
+      statusText = 'Online';
+    } else if (lastSeen) {
+      statusText = 'Last seen ' + formatDistanceToNow(new Date(lastSeen), { addSuffix: true });
+      statusColor = '#71717a'; // Gray for offline
+    } else if (otherMember?.last_seen) {
+      statusText = 'Last seen ' + formatDistanceToNow(new Date(otherMember.last_seen), { addSuffix: true });
+      statusColor = '#71717a';
     }
-  }, [conversationId]);
+    
+    navigation.setOptions({ 
+      headerTitle: () => (
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ color: '#fafafa', fontSize: 16, fontWeight: '600' }}>{title}</Text>
+          {statusText ? <Text style={{ color: statusColor, fontSize: 12 }}>{statusText}</Text> : null}
+        </View>
+      )
+    });
+  }, [title, isOnline, isTyping, lastSeen, otherMember?.last_seen, navigation, ticker]);
+
+  useEffect(() => {
+    if (conversationId && session?.user.id) {
+      chatService.fetchMessages(conversationId).then(() => setLoading(false));
+      typingService.joinRoom(conversationId, session.user.id);
+    }
+    return () => {
+      if (conversationId) typingService.leaveRoom(conversationId);
+    };
+  }, [conversationId, session?.user.id]);
 
   useEffect(() => {
     if (conversationId && session?.user.id) {
@@ -38,10 +82,27 @@ export const ChatRoomScreen = () => {
     }
   }, [conversationId, messages.length, session?.user.id]);
 
+  const handleTextChange = (text: string) => {
+    setInputText(text);
+    if (!session?.user.id || !conversationId) return;
+
+    const now = Date.now();
+    if (now - lastTypingTime.current > 2000) {
+      typingService.sendTypingEvent(conversationId, session.user.id, true);
+      lastTypingTime.current = now;
+    }
+    
+    if (text === '') {
+      typingService.sendTypingEvent(conversationId, session.user.id, false);
+      lastTypingTime.current = 0;
+    }
+  };
+
   const handleSend = () => {
     const text = inputText.trim();
     if (!text || !session?.user.id) return;
     setInputText('');
+    typingService.sendTypingEvent(conversationId, session.user.id, false);
     chatService.sendMessage(conversationId, session.user.id, text);
   };
 
@@ -105,7 +166,7 @@ export const ChatRoomScreen = () => {
               placeholder="Message..."
               placeholderTextColor="#71717a"
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleTextChange}
               multiline
               maxLength={2000}
             />

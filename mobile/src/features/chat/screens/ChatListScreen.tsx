@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useChatStore } from '../store/useChatStore';
+import { usePresenceStore } from '../store/usePresenceStore';
 import { chatService } from '../services/chatService';
 import { useAuth } from '../../auth/AuthContext';
 import { Avatar } from '../../../components/Avatar';
@@ -13,6 +14,7 @@ export const ChatListScreen = () => {
   const navigation = useNavigation<any>();
   const { session } = useAuth();
   const { conversations, loadingConversations, startRealtime } = useChatStore();
+  const onlineUsers = usePresenceStore(state => state.onlineUsers);
 
   useEffect(() => {
     if (session?.user.id) {
@@ -30,13 +32,18 @@ export const ChatListScreen = () => {
     const avatarPath = item.type === 'direct' ? item.other_member?.avatar_path : null;
     const timeText = item.updated_at ? formatDistanceToNow(new Date(item.updated_at), { addSuffix: true }) : '';
 
+    const isOnline = item.other_member?.id ? onlineUsers[item.other_member.id] : false;
+
     return (
       <TouchableOpacity 
         style={styles.chatItem} 
         activeOpacity={0.7}
         onPress={() => navigation.navigate('ChatRoom', { conversationId: item.id, title })}
       >
-        <Avatar path={avatarPath} size={56} fallbackText={title} />
+        <View style={styles.avatarWrapper}>
+          <Avatar path={avatarPath} size={56} fallbackText={title} />
+          {isOnline && <View style={styles.onlineDot} />}
+        </View>
         <View style={styles.textContainer}>
           <View style={styles.row}>
             <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -88,13 +95,15 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
   headerTitle: { color: '#fafafa', fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
   listContent: { paddingBottom: 20 },
-  chatItem: { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center' },
+  chatItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12 },
+  avatarWrapper: { position: 'relative' },
+  onlineDot: { position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: '#10b981', borderWidth: 2, borderColor: '#09090b' },
   textContainer: { flex: 1, marginLeft: 16, justifyContent: 'center' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  title: { color: '#fafafa', fontSize: 17, fontWeight: '600', flex: 1, marginRight: 10 },
-  time: { color: '#71717a', fontSize: 12 },
-  subtitle: { color: '#a1a1aa', fontSize: 14 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { color: '#fafafa', fontSize: 18, fontWeight: '600', marginTop: 20 },
-  emptySubtext: { color: '#a1a1aa', fontSize: 14, marginTop: 8, textAlign: 'center' }
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
+  title: { flex: 1, color: '#fafafa', fontSize: 17, fontWeight: '600' },
+  time: { color: '#71717a', fontSize: 13, marginLeft: 8 },
+  subtitle: { color: '#a1a1aa', fontSize: 15 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
+  emptyText: { color: '#fafafa', fontSize: 18, fontWeight: '600', marginTop: 16 },
+  emptySubtext: { color: '#71717a', fontSize: 15, textAlign: 'center', marginTop: 8 }
 });

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../services/supabase/client';
+import { presenceService } from '../chat/services/presenceService';
 
 interface AuthContextType {
   session: Session | null;
@@ -65,6 +66,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (mounted) {
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
+        if (initialSession?.user) {
+          presenceService.init(initialSession.user.id);
+        }
         await fetchMfaDetails(initialSession);
         setIsLoading(false);
       }
@@ -73,8 +77,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     restoreSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
+      async (event, newSession) => {
         if (!mounted) return;
+        
+        if (event === 'SIGNED_OUT') {
+          presenceService.cleanup();
+        } else if (newSession?.user) {
+          presenceService.init(newSession.user.id);
+        }
+        
         setSession(newSession);
         setUser(newSession?.user ?? null);
         await fetchMfaDetails(newSession);

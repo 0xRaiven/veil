@@ -50,26 +50,42 @@ export const chatService = {
     if (otherUserIds.length > 0) {
       const { data } = await db
         .from('profiles')
-        .select('id, display_name, avatar_path')
+        .select('id, display_name, avatar_path, last_seen')
         .in('id', otherUserIds);
       profilesData = data || [];
     }
 
+    const { data: latestMessages } = await db
+      .from('messages')
+      .select('conversation_id, content, content_type, created_at')
+      .in('conversation_id', convIds)
+      .order('created_at', { ascending: false });
+
+    const lastMsgMap: Record<string, any> = {};
+    latestMessages?.forEach((m: any) => {
+      if (!lastMsgMap[m.conversation_id]) {
+        lastMsgMap[m.conversation_id] = m;
+      }
+    });
+
     const formatted: Conversation[] = (members || []).map((m: any) => {
       const conv = Array.isArray(m.conversations) ? m.conversations[0] : m.conversations;
       const other = otherMembers?.find((om: any) => om.conversation_id === m.conversation_id);
-      const otherProfile = other ? profilesData.find((p: any) => p.id === other.user_id) : null;
-      
+      const otherProfile = profilesData.find(p => p.id === other?.user_id);
+      const lastMsg = lastMsgMap[m.conversation_id];
+
       return {
         id: conv.id,
         type: conv.type,
         created_at: conv.created_at,
-        updated_at: conv.updated_at,
+        updated_at: lastMsg ? lastMsg.created_at : conv.updated_at,
+        last_message: lastMsg ? (lastMsg.content_type === 'plaintext' ? lastMsg.content : '🔒 Encrypted Message') : undefined,
         other_member: otherProfile ? {
           id: otherProfile.id,
           display_name: otherProfile.display_name,
           avatar_path: otherProfile.avatar_path,
-          last_read_at: other.last_read_at
+          last_read_at: other?.last_read_at,
+          last_seen: otherProfile.last_seen
         } : undefined
       };
     });

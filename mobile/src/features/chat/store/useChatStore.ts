@@ -21,6 +21,7 @@ export interface Conversation {
     display_name: string;
     avatar_path: string | null;
     last_read_at?: string;
+    last_seen?: string;
   };
   last_message?: string;
   unread_count?: number;
