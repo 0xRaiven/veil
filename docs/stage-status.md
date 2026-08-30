@@ -11,3 +11,5 @@ This document tracks the completion status of all stages in the VEIL project.
 - Stage 1 - Supabase Foundation (Completed)
 - Stage 2 - Authentication (Completed)
 - Stage 3 - Profile & Settings Foundation (Completed)
+- Stage 4 - Contact Discovery (Completed)
+- Stage 5 - Messaging Database (Completed)

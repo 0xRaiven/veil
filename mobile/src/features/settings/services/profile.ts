@@ -5,6 +5,7 @@ export interface ProfileData {
   display_name: string | null;
   avatar_path: string | null;
   bio: string | null;
+  phone_hash?: string | null;
 }
 
 export const getProfile = async (userId: string): Promise<ProfileData | null> => {
@@ -24,7 +25,7 @@ export const getProfile = async (userId: string): Promise<ProfileData | null> =>
 export const updateProfile = async (userId: string, updates: Partial<ProfileData>) => {
   const { error } = await supabase
     .from('profiles')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...updates, updated_at: new Date().toISOString() } as any)
     .eq('id', userId);
 
   if (error) throw error;

@@ -28,6 +28,7 @@ export const SettingsHubScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ACCOUNT</Text>
           <MenuItem title="Profile" onPress={() => navigation.navigate('Profile')} />
+          <MenuItem title="Discoverability (Phone)" onPress={() => navigation.navigate('LinkPhone')} />
           <MenuItem title="Security & MFA" onPress={() => navigation.navigate('MfaSetup')} />
         </View>
 

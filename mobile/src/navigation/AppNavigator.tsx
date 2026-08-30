@@ -14,7 +14,10 @@ const HomeScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>VEIL</Text>
-      <Text style={styles.subtitle}>Stage 3 Foundation</Text>
+      <Text style={styles.subtitle}>Stage 4 Contacts</Text>
+      <View style={styles.buttonContainer}>
+        <Button title="Find Friends" onPress={() => navigation.navigate('ContactDiscovery')} color="#E2A14A" />
+      </View>
       <View style={styles.buttonContainer}>
         <Button title="Open Settings" onPress={() => navigation.navigate('SettingsHub')} color="#4A90E2" />
       </View>
@@ -31,6 +34,8 @@ const styles = StyleSheet.create({
 
 import { SettingsHubScreen } from '../features/settings/screens/SettingsHubScreen';
 import { ProfileScreen } from '../features/settings/screens/ProfileScreen';
+import { LinkPhoneScreen } from '../features/settings/screens/LinkPhoneScreen';
+import { ContactDiscoveryScreen } from '../features/contacts/screens/ContactDiscoveryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +46,8 @@ export const AppNavigator = () => {
       <Stack.Screen name="SettingsHub" component={SettingsHubScreen} options={{ title: 'Settings', headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Edit Profile' }} />
       <Stack.Screen name="MfaSetup" component={MfaSetupScreen} options={{ title: 'MFA Settings' }} />
+      <Stack.Screen name="LinkPhone" component={LinkPhoneScreen} options={{ title: 'Link Phone' }} />
+      <Stack.Screen name="ContactDiscovery" component={ContactDiscoveryScreen} options={{ title: 'Find Friends' }} />
     </Stack.Navigator>
   );
 };
