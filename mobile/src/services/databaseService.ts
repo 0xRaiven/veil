@@ -81,3 +81,15 @@ export const setSyncMetadata = (key: string, value: string) => {
     [key, value]
   );
 };
+
+export const clearLocalDatabase = () => {
+  try {
+    localDb.execute('DELETE FROM local_messages');
+    localDb.execute('DELETE FROM local_conversations');
+    localDb.execute('DELETE FROM outbox');
+    localDb.execute('DELETE FROM sync_metadata');
+    console.log('[DB] Local database cleared');
+  } catch (error) {
+    console.error('[DB] Error clearing local database:', error);
+  }
+};

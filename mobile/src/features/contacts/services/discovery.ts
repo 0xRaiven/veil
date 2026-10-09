@@ -12,6 +12,7 @@ export interface DiscoveredContact {
   avatar_path: string | null;
   phone_hash: string;
   local_name: string; // How they are saved in the user's phone
+  is_self?: boolean;
 }
 
 export interface UnmatchedContact {
@@ -43,7 +44,7 @@ export const normalizePhoneNumber = (rawNumber: string, defaultRegion: string = 
     if (phoneUtil.isValidNumber(number)) {
       return phoneUtil.format(number, PhoneNumberFormat.E164);
     }
-  } catch (e) {
+  } catch {
     // Parsing failed
   }
   return null;
@@ -53,7 +54,7 @@ export const hashPhoneNumber = (normalizedNumber: string): string => {
   return crypto.createHash('sha256').update(normalizedNumber).digest('hex');
 };
 
-export const discoverContacts = async (defaultRegion: string = 'US') => {
+export const discoverContacts = async (currentUserId?: string, defaultRegion: string = 'US') => {
   const hasPermission = await requestContactsPermission();
   if (!hasPermission) {
     throw new Error('Permission denied');
@@ -95,15 +96,20 @@ export const discoverContacts = async (defaultRegion: string = 'US') => {
   if (data) {
     (data as any[]).forEach((row: any) => {
       matchedHashes.add(row.matched_hash);
+      const isSelf = Boolean(currentUserId && row.id === currentUserId);
       matchedContacts.push({
         id: row.id,
         display_name: row.display_name,
         avatar_path: row.avatar_path,
         phone_hash: row.matched_hash,
-        local_name: localMap.get(row.matched_hash) || row.display_name,
+        local_name: isSelf ? `${localMap.get(row.matched_hash) || row.display_name} (You)` : (localMap.get(row.matched_hash) || row.display_name),
+        is_self: isSelf,
       });
     });
   }
+
+  // Sort so that self contact appears first
+  matchedContacts.sort((a, b) => (b.is_self ? 1 : 0) - (a.is_self ? 1 : 0));
 
   // Filter unmatched list
   const remainingUnmatched = unmatchedList.filter(u => !matchedHashes.has(hashPhoneNumber(u.raw_number)));

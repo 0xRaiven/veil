@@ -24,6 +24,7 @@ export interface Conversation {
     local_avatar_path?: string | null;
     last_read_at?: string;
     last_seen?: string | null;
+    is_self?: boolean;
   };
   last_message?: string;
   unread_count?: number;
@@ -52,7 +53,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setConversations: (convs) => {
     const map: Record<string, Conversation> = {};
-    convs.forEach(c => map[c.id] = c);
+    convs.forEach(c => {
+      map[c.id] = c;
+    });
     set({ conversations: map, loadingConversations: false });
   },
 

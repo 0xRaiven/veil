@@ -21,20 +21,21 @@ export const ChatListScreen = () => {
       chatService.fetchConversations(session.user.id);
       startRealtime(session.user.id);
     }
-  }, [session?.user.id]);
+  }, [session?.user.id, startRealtime]);
 
   const convArray = Object.values(conversations).sort((a, b) => 
     new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 
   const renderItem = ({ item }: { item: any }) => {
+    const isSelf = item.other_member?.is_self;
     const title = item.type === 'direct' ? (item.other_member?.display_name || 'Unknown') : 'Group Chat';
     const remoteAvatarPath = item.type === 'direct' ? item.other_member?.avatar_path : null;
     const localAvatarPath = item.type === 'direct' ? item.other_member?.local_avatar_path : null;
     const finalAvatarPath = localAvatarPath || remoteAvatarPath;
     const timeText = item.updated_at ? formatDistanceToNow(new Date(item.updated_at), { addSuffix: true }) : '';
 
-    const isOnline = item.other_member?.id ? onlineUsers[item.other_member.id] : false;
+    const isOnline = isSelf ? true : (item.other_member?.id ? onlineUsers[item.other_member.id] : false);
 
     return (
       <TouchableOpacity 
@@ -43,7 +44,7 @@ export const ChatListScreen = () => {
         onPress={() => navigation.navigate('ChatRoom', { conversationId: item.id, title })}
       >
         <View style={styles.avatarWrapper}>
-          <Avatar path={finalAvatarPath} size={56} fallbackText={title} />
+          <Avatar path={finalAvatarPath} size={56} fallbackText={isSelf ? 'You' : title} />
           {isOnline && <View style={styles.onlineDot} />}
         </View>
         <View style={styles.textContainer}>
@@ -52,7 +53,7 @@ export const ChatListScreen = () => {
             <Text style={styles.time}>{timeText}</Text>
           </View>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {item.last_message || 'No messages yet'}
+            {item.last_message || (isSelf ? 'Message yourself on this device' : 'No messages yet')}
           </Text>
         </View>
       </TouchableOpacity>

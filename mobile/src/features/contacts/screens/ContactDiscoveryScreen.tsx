@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Share, Linking, Platform, TextInput } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Linking, Platform, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { discoverContacts, searchGlobalUsers, getSuggestedUsers, DiscoveredContact, UnmatchedContact } from '../services/discovery';
@@ -20,25 +20,11 @@ export const ContactDiscoveryScreen = () => {
   const [globalUsers, setGlobalUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'contacts' | 'global'>('contacts');
 
-  useEffect(() => {
-    loadContacts();
-  }, []);
-
-  useEffect(() => {
-    if (session?.user.id) {
-      if (searchQuery.trim().length > 0) {
-        searchGlobalUsers(searchQuery, session.user.id).then(setGlobalUsers);
-      } else {
-        getSuggestedUsers(session.user.id).then(setGlobalUsers);
-      }
-    }
-  }, [searchQuery, session?.user.id]);
-
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const result = await discoverContacts();
+      const result = await discoverContacts(session?.user.id);
       setMatched(result.matched);
       setUnmatched(result.unmatched);
     } catch (e: any) {
@@ -50,7 +36,21 @@ export const ContactDiscoveryScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.user.id]);
+
+  useEffect(() => {
+    loadContacts();
+  }, [loadContacts]);
+
+  useEffect(() => {
+    if (session?.user.id) {
+      if (searchQuery.trim().length > 0) {
+        searchGlobalUsers(searchQuery, session.user.id).then(setGlobalUsers);
+      } else {
+        getSuggestedUsers(session.user.id).then(setGlobalUsers);
+      }
+    }
+  }, [searchQuery, session?.user.id]);
 
   const inviteContact = async (phone: string) => {
     const message = "Join me on VEIL, a private messaging app.";
@@ -62,14 +62,21 @@ export const ContactDiscoveryScreen = () => {
   };
 
   const startChat = async (otherUserId: string, title: string) => {
-    // Attempt to create or get conversation
-    const { data, error } = await (supabase as any).rpc('create_direct_conversation', {
-      other_user_id: otherUserId
-    });
-    if (!error && data) {
-      navigation.navigate('ChatRoom', { conversationId: data, title });
-    } else {
-      console.error("Failed to start chat", error);
+    try {
+      const isSelf = session?.user.id === otherUserId;
+      const chatTitle = isSelf ? 'Note to Self (You)' : title;
+      const { data, error } = await (supabase as any).rpc('create_direct_conversation', {
+        other_user_id: otherUserId
+      });
+      if (!error && data) {
+        navigation.navigate('ChatRoom', { conversationId: data, title: chatTitle });
+      } else {
+        console.error("Failed to start chat", error);
+        Alert.alert('Chat Error', error?.message || 'Could not start conversation');
+      }
+    } catch (e: any) {
+      console.error("Exception starting chat", e);
+      Alert.alert('Chat Error', e.message);
     }
   };
 
@@ -93,20 +100,40 @@ export const ContactDiscoveryScreen = () => {
     );
   }
 
-  const renderMatched = ({ item }: { item: DiscoveredContact }) => (
-    <TouchableOpacity style={styles.listItem} activeOpacity={0.7} onPress={() => startChat(item.id, item.local_name)}>
-      <Avatar path={item.avatar_path} size={52} fallbackText={item.display_name} />
-      <View style={styles.listTextContainer}>
-        <Text style={styles.listTitle}>{item.local_name}</Text>
-        <Text style={styles.listSubtitle}>
-          <Text style={styles.veilBadgeText}>● VEIL</Text> {item.display_name}
-        </Text>
-      </View>
-      <TouchableOpacity style={styles.actionBtn} onPress={() => startChat(item.id, item.local_name)}>
-        <Text style={styles.actionBtnText}>Chat</Text>
+  const renderMatched = ({ item }: { item: DiscoveredContact }) => {
+    const isSelf = Boolean(item.is_self || (session?.user.id && item.id === session.user.id));
+    const title = isSelf ? 'Note to Self (You)' : item.local_name;
+    return (
+      <TouchableOpacity
+        style={[styles.listItem, isSelf && styles.selfListItem]}
+        activeOpacity={0.7}
+        onPress={() => startChat(item.id, title)}
+      >
+        <Avatar path={item.avatar_path} size={52} fallbackText={item.display_name} />
+        <View style={styles.listTextContainer}>
+          <View style={styles.titleRow}>
+            <Text style={styles.listTitle} numberOfLines={1}>{item.local_name}</Text>
+            {isSelf && (
+              <View style={styles.selfBadge}>
+                <Text style={styles.selfBadgeText}>THIS DEVICE</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.listSubtitle}>
+            <Text style={styles.veilBadgeText}>● VEIL</Text> {isSelf ? 'Message yourself (Notes & Sync)' : item.display_name}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.actionBtn, isSelf && styles.selfActionBtn]}
+          onPress={() => startChat(item.id, title)}
+        >
+          <Text style={[styles.actionBtnText, isSelf && styles.selfActionBtnText]}>
+            {isSelf ? 'Notes' : 'Chat'}
+          </Text>
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderGlobalUser = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.listItem} activeOpacity={0.7} onPress={() => startChat(item.id, item.display_name)}>
@@ -206,12 +233,18 @@ const styles = StyleSheet.create({
   retryBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   sectionHeader: { color: '#71717a', fontSize: 12, fontWeight: '700', marginLeft: 20, marginTop: 30, marginBottom: 12, letterSpacing: 1.2 },
   listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#18181b' },
+  selfListItem: { backgroundColor: 'rgba(59, 130, 246, 0.05)' },
   listTextContainer: { flex: 1, marginLeft: 16, justifyContent: 'center' },
-  listTitle: { color: '#fafafa', fontSize: 16, fontWeight: '600', letterSpacing: 0.2, marginBottom: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  listTitle: { color: '#fafafa', fontSize: 16, fontWeight: '600', letterSpacing: 0.2 },
+  selfBadge: { backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)' },
+  selfBadgeText: { color: '#10b981', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   listSubtitle: { color: '#a1a1aa', fontSize: 13 },
   veilBadgeText: { color: '#10b981', fontWeight: '700', fontSize: 11, letterSpacing: 0.5 },
   actionBtn: { backgroundColor: 'rgba(59, 130, 246, 0.15)', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(59, 130, 246, 0.3)' },
   actionBtnText: { color: '#60a5fa', fontSize: 14, fontWeight: '700' },
+  selfActionBtn: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)' },
+  selfActionBtnText: { color: '#10b981' },
   inviteBtn: { backgroundColor: '#18181b', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, borderWidth: 1, borderColor: '#27272a' },
   inviteBtnText: { color: '#d4d4d8', fontSize: 14, fontWeight: '600' },
   fallbackAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#18181b', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#27272a' },

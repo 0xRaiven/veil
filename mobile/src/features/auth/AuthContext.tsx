@@ -1,10 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../services/supabase/client';
 import { presenceService } from '../chat/services/presenceService';
 import { initDatabase } from '../../services/databaseService';
-import { syncService } from '../chat/services/syncService';
-import { outboxService } from '../chat/services/outboxService';
 import { chatService } from '../chat/services/chatService';
 import { notificationService } from '../../services/notificationService';
 import NetInfo from '@react-native-community/netinfo';
@@ -34,6 +32,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [nextAal, setNextAal] = useState<'aal1' | 'aal2' | null>(null);
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
 
   const fetchMfaDetails = async (sess: Session | null) => {
     if (!sess) {
@@ -42,9 +42,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setMfaFactors([]);
       return;
     }
-    
-    // Check current Authenticator Assurance Level
-    const currentAal = sess.user.aud === 'authenticated' ? sess.user.app_metadata.aal || 'aal1' : null;
     
     try {
       // Determine what AAL we *could* have based on enrolled factors
@@ -95,8 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         
         if (event === 'SIGNED_OUT') {
-          if (session?.user?.id) {
-             notificationService.removeToken(session.user.id);
+          if (sessionRef.current?.user?.id) {
+             notificationService.removeToken(sessionRef.current.user.id);
           }
           presenceService.cleanup();
           if (unsubscribeMessages) unsubscribeMessages();
@@ -118,11 +115,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     const unsubscribeNet = NetInfo.addEventListener(state => {
-      if (state.isConnected && session?.user) {
+      const currentSess = sessionRef.current;
+      if (state.isConnected && currentSess?.user) {
         console.log('[AuthContext] Network restored, fetching conversations');
         // syncService.performSync();
         // outboxService.process();
-        chatService.fetchConversations(session.user.id);
+        chatService.fetchConversations(currentSess.user.id);
       }
     });
 

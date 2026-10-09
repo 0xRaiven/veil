@@ -1,6 +1,5 @@
 import { supabase } from '../../../services/supabase/client';
 import { localDb } from '../../../services/databaseService';
-import { syncService } from './syncService';
 import { useChatStore } from '../store/useChatStore';
 
 export class OutboxService {

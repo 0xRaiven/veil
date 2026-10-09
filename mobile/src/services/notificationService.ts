@@ -34,14 +34,41 @@ export const notificationService = {
     }
   },
 
+  async ensureProfileExists(userId: string) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
+      await supabase.from('profiles').upsert(
+        {
+          id: userId,
+          display_name: displayName,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+    } catch {
+      // Ignore if already created
+    }
+  },
+
   async saveTokenToDatabase(userId: string, token: string) {
     try {
       const platform = Platform.OS === 'android' ? 'android' : 'ios';
       
-      const { error } = await (supabase as any).rpc('register_push_token', {
+      let { error } = await (supabase as any).rpc('register_push_token', {
         p_token: token,
         p_platform: platform
       });
+
+      if (error && error.code === '23503') {
+        // Missing profile record: create it and retry
+        await this.ensureProfileExists(userId);
+        const retryResult = await (supabase as any).rpc('register_push_token', {
+          p_token: token,
+          p_platform: platform
+        });
+        error = retryResult.error;
+      }
 
       if (error) {
         console.error('[NotificationService] Error saving token:', error);

@@ -51,6 +51,7 @@ export class MediaService {
     }
   }
 
+  /* eslint-disable no-bitwise */
   private simpleHash(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -60,6 +61,7 @@ export class MediaService {
     }
     return Math.abs(hash).toString(16);
   }
+  /* eslint-enable no-bitwise */
 }
 
 export const mediaService = new MediaService();

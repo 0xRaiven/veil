@@ -16,6 +16,18 @@ export const getProfile = async (userId: string): Promise<ProfileData | null> =>
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // Row missing: create default profile
+      const { data: { user } } = await supabase.auth.getUser();
+      const defaultProfile: ProfileData = {
+        id: userId,
+        display_name: user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User',
+        avatar_path: null,
+        bio: null,
+      };
+      await supabase.from('profiles').upsert({ ...defaultProfile, updated_at: new Date().toISOString() } as any);
+      return defaultProfile;
+    }
     console.error('Error fetching profile:', error);
     return null;
   }
@@ -25,8 +37,7 @@ export const getProfile = async (userId: string): Promise<ProfileData | null> =>
 export const updateProfile = async (userId: string, updates: Partial<ProfileData>) => {
   const { error } = await supabase
     .from('profiles')
-    .update({ ...updates, updated_at: new Date().toISOString() } as any)
-    .eq('id', userId);
+    .upsert({ id: userId, ...updates, updated_at: new Date().toISOString() } as any);
 
   if (error) throw error;
 };
@@ -68,4 +79,12 @@ export const getAvatarSignedUrl = async (path: string, expiresIn: number = 3600)
     return null;
   }
   return data?.signedUrl;
+};
+
+export const deleteAccount = async (): Promise<void> => {
+  const { error } = await (supabase as any).rpc('delete_user_account');
+  if (error) {
+    console.error('Error deleting account:', error);
+    throw error;
+  }
 };

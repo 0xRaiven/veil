@@ -3,13 +3,15 @@ import { useChatStore, Message, Conversation } from '../store/useChatStore';
 
 const db = supabase as any;
 
+/* eslint-disable no-bitwise */
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : ((r & 0x3) | 0x8);
     return v.toString(16);
   });
 };
+/* eslint-enable no-bitwise */
 
 export const chatService = {
   async fetchConversations(userId: string, retries = 3): Promise<void> {
@@ -73,11 +75,50 @@ export const chatService = {
       }
     });
 
+    // Check if there are self conversations (where user is the only member)
+    const hasSelfConv = (members || []).some((m: any) => {
+      const conv = Array.isArray(m.conversations) ? m.conversations[0] : m.conversations;
+      const other = otherMembers?.find((om: any) => om.conversation_id === m.conversation_id);
+      return conv?.type === 'direct' && !other;
+    });
+
+    let currentProfile: any = null;
+    if (hasSelfConv) {
+      const { data } = await db
+        .from('profiles')
+        .select('id, display_name, avatar_path, last_seen')
+        .eq('id', userId)
+        .single();
+      currentProfile = data;
+    }
+
     const formatted: Conversation[] = (members || []).map((m: any) => {
       const conv = Array.isArray(m.conversations) ? m.conversations[0] : m.conversations;
       const other = otherMembers?.find((om: any) => om.conversation_id === m.conversation_id);
       const otherProfile = profilesData.find(p => p.id === other?.user_id);
       const lastMsg = lastMsgMap[m.conversation_id];
+      const isSelf = conv.type === 'direct' && !other;
+
+      let otherMemberInfo: any;
+      if (isSelf) {
+        otherMemberInfo = {
+          id: userId,
+          display_name: 'Note to Self (You)',
+          avatar_path: currentProfile?.avatar_path || null,
+          last_read_at: m.last_read_at,
+          last_seen: currentProfile?.last_seen || null,
+          is_self: true,
+        };
+      } else if (otherProfile) {
+        otherMemberInfo = {
+          id: otherProfile.id,
+          display_name: otherProfile.display_name,
+          avatar_path: otherProfile.avatar_path,
+          last_read_at: other?.last_read_at,
+          last_seen: otherProfile.last_seen,
+          is_self: false,
+        };
+      }
 
       return {
         id: conv.id,
@@ -85,13 +126,7 @@ export const chatService = {
         created_at: conv.created_at,
         updated_at: lastMsg ? lastMsg.created_at : conv.updated_at,
         last_message: lastMsg ? (lastMsg.content_type === 'plaintext' ? lastMsg.content : '🔒 Encrypted Message') : undefined,
-        other_member: otherProfile ? {
-          id: otherProfile.id,
-          display_name: otherProfile.display_name,
-          avatar_path: otherProfile.avatar_path,
-          last_read_at: other?.last_read_at,
-          last_seen: otherProfile.last_seen
-        } : undefined
+        other_member: otherMemberInfo
       };
     });
 
@@ -158,7 +193,7 @@ export const chatService = {
       .eq('user_id', userId);
   },
 
-  subscribeToMessages(userId: string) {
+  subscribeToMessages(_userId: string) {
     const channel = db.channel(`public:messages:${Date.now()}`)
       .on(
         'postgres_changes',

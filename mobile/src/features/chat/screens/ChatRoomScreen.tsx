@@ -44,8 +44,12 @@ export const ChatRoomScreen = () => {
   useEffect(() => {
     let statusText = '';
     let statusColor = '#10b981'; // Green by default
+    const isSelf = otherMember?.is_self;
     
-    if (isTyping) {
+    if (isSelf) {
+      statusText = 'This Device • Saved messages';
+      statusColor = '#10b981';
+    } else if (isTyping) {
       statusText = 'Typing...';
     } else if (isOnline) {
       statusText = 'Online';
@@ -57,24 +61,26 @@ export const ChatRoomScreen = () => {
       statusColor = '#71717a';
     }
     
+    const displayTitle = isSelf ? 'Note to Self (You)' : title;
     const remoteAvatarPath = otherMember?.avatar_path || null;
     const localAvatarPath = otherMember?.local_avatar_path || null;
     const finalAvatarPath = localAvatarPath || remoteAvatarPath;
 
     navigation.setOptions({ 
+      // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ marginRight: 10 }}>
-            <Avatar path={finalAvatarPath} size={36} fallbackText={title} />
+        <View style={styles.headerContainer}>
+          <View style={styles.headerAvatarWrapper}>
+            <Avatar path={finalAvatarPath} size={36} fallbackText={isSelf ? 'You' : displayTitle} />
           </View>
           <View>
-            <Text style={{ color: '#fafafa', fontSize: 16, fontWeight: '600' }}>{title}</Text>
-            {statusText ? <Text style={{ color: statusColor, fontSize: 12 }}>{statusText}</Text> : null}
+            <Text style={styles.headerTitleText}>{displayTitle}</Text>
+            {statusText ? <Text style={[styles.headerStatusText, { color: statusColor }]}>{statusText}</Text> : null}
           </View>
         </View>
       )
     });
-  }, [title, isOnline, isTyping, lastSeen, otherMember?.last_seen, otherMember?.avatar_path, otherMember?.local_avatar_path, navigation, ticker]);
+  }, [title, isOnline, isTyping, lastSeen, otherMember?.last_seen, otherMember?.avatar_path, otherMember?.local_avatar_path, otherMember?.is_self, navigation, ticker]);
 
   useEffect(() => {
     if (conversationId && session?.user.id) {
@@ -150,7 +156,7 @@ export const ChatRoomScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView 
-        style={{ flex: 1 }}
+        style={styles.flexOne}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
@@ -212,6 +218,11 @@ const styles = StyleSheet.create({
   timeTextMe: { color: 'rgba(255,255,255,0.7)' },
   timeTextThem: { color: '#a1a1aa' },
   statusIcon: { marginLeft: 4 },
+  flexOne: { flex: 1 },
+  headerContainer: { flexDirection: 'row', alignItems: 'center' },
+  headerAvatarWrapper: { marginRight: 10 },
+  headerTitleText: { color: '#fafafa', fontSize: 16, fontWeight: '600' },
+  headerStatusText: { fontSize: 12 },
   composerContainer: { backgroundColor: '#09090b', borderTopWidth: 1, borderTopColor: '#18181b', paddingHorizontal: 16, paddingTop: 12 },
   inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: '#18181b', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1, borderColor: '#27272a' },
   input: { flex: 1, color: '#fafafa', fontSize: 16, maxHeight: 100, minHeight: 24, paddingVertical: 4 },

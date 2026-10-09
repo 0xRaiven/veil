@@ -40,7 +40,7 @@ export const RegisterScreen = () => {
               if (navigation.isFocused()) {
                 navigation.navigate('Login');
               }
-            } catch (e) {
+            } catch {
               // Ignore navigation errors if the auth navigator is already unmounted 
               // (which happens if Supabase automatically logs the user in upon registration)
             }

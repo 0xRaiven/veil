@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
+    "android": "react-native run-android --no-packager",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
@@ -70,5 +70,10 @@
   },
   "engines": {
     "node": ">= 22.11.0"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.2": true,
+    "esbuild@0.28.2": true,
+    "protobufjs@7.6.6": true
   }
 }

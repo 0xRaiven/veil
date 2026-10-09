@@ -1,10 +1,14 @@
 import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { supabase } from '../services/supabase/client';
-import { MfaSetupScreen } from '../features/auth/screens/MfaSetupScreen';
+import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MfaSetupScreen } from '../features/auth/screens/MfaSetupScreen';
+import { SettingsHubScreen } from '../features/settings/screens/SettingsHubScreen';
+import { ProfileScreen } from '../features/settings/screens/ProfileScreen';
+import { LinkPhoneScreen } from '../features/settings/screens/LinkPhoneScreen';
+import { ContactDiscoveryScreen } from '../features/contacts/screens/ContactDiscoveryScreen';
+import { ChatListScreen } from '../features/chat/screens/ChatListScreen';
+import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
 
 // We will replace the placeholder HomeScreen entirely since the prompt asks for
 // a Settings Hub as the foundation. We can use SettingsHub as the main view for now,
@@ -35,12 +39,7 @@ const styles = StyleSheet.create({
   buttonContainer: { marginTop: 15 }
 });
 
-import { SettingsHubScreen } from '../features/settings/screens/SettingsHubScreen';
-import { ProfileScreen } from '../features/settings/screens/ProfileScreen';
-import { LinkPhoneScreen } from '../features/settings/screens/LinkPhoneScreen';
-import { ContactDiscoveryScreen } from '../features/contacts/screens/ContactDiscoveryScreen';
-import { ChatListScreen } from '../features/chat/screens/ChatListScreen';
-import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
+
 
 const Stack = createNativeStackNavigator();
 

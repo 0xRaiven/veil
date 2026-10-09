@@ -41,10 +41,10 @@ class PresenceService {
         
         usePresenceStore.getState().bulkSetOnlineStatus(onlineUsers);
       })
-      .on('presence', { event: 'join' }, ({ key, newPresences }: any) => {
+      .on('presence', { event: 'join' }, ({ key }: any) => {
         usePresenceStore.getState().setOnlineStatus(key, true);
       })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }: any) => {
+      .on('presence', { event: 'leave' }, ({ key }: any) => {
         // Double check they aren't still connected on another device
         const state = this.channel.presenceState();
         if (!state[key] || state[key].length === 0) {

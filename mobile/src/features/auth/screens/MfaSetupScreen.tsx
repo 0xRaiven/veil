@@ -19,7 +19,7 @@ export const MfaSetupScreen = () => {
     if (!isEnrolled && !factorId) {
       startEnrollment();
     }
-  }, [isEnrolled]);
+  }, [isEnrolled, factorId]);
 
   const startEnrollment = async () => {
     setInitLoading(true);
